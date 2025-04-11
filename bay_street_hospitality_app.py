@@ -1,92 +1,56 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import cvxpy as cp
 
 st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
 
+# Branding with logo only (no video)
+st.markdown("""
+    <div style="display:flex; align-items:center;">
+        <img src="https://cdn.prod.website-files.com/66ec88f6d7b63833eb28d6a7/66ec8de11054852c315965b0_BAY%20STREET%20HOSPITALITY-03.png" style="height:60px;" />
+    </div>
+""", unsafe_allow_html=True)
+
 st.title("🏨 Bay Street Hospitality Investment Scoring Dashboard")
 
-# Sidebar: Deal Input
-st.sidebar.header("📝 Input New Deal")
+# Tabs structure
+tabs = st.tabs(["🔍 Deal Scoring", "📊 Portfolio Optimizer", "🕰️ Backtest Engine", "📥 Bulk Upload & Auto-Score"])
 
-deal_name = st.sidebar.text_input("Deal Name")
-asset_type = st.sidebar.selectbox("Asset Type", ["Hotel", "Platform", "Mixed"])
-region = st.sidebar.selectbox("Region", ["Americas", "Europe", "APAC", "ME", "ASEAN"])
-public_private = st.sidebar.radio("Public or Private?", ["Public", "Private"])
+# ---------------------- TAB 4: BULK UPLOAD & AUTO-SCORE ------------------------
+with tabs[3]:
+    st.header("📥 Bulk Deal Upload + Auto-Scoring")
+    uploaded_bulk = st.file_uploader("Upload a CSV file with your deal data", type=["csv"], key="bulk_uploader")
 
-projected_irr = st.sidebar.number_input("Projected IRR (%)", min_value=0.0, max_value=100.0, value=12.0)
-coc_yield = st.sidebar.number_input("Cash-on-Cash Yield (%)", min_value=0.0, max_value=100.0, value=6.0)
-volatility = st.sidebar.number_input("Volatility Estimate (%)", min_value=0.0, max_value=100.0, value=10.0)
-illiquidity_premium = st.sidebar.number_input("Illiquidity Premium (%)", min_value=0.0, max_value=10.0, value=2.0)
-esg_score = st.sidebar.slider("ESG Impact Score (1–5)", 1, 5, 3)
-sponsor_coinvest = st.sidebar.number_input("Sponsor Co-Investment (%)", min_value=0.0, max_value=100.0, value=5.0)
+    required_columns = ["Deal", "IRR", "CoC Yield", "Volatility", "LSD", "ESG", "Sponsor Co-Invest", "OpLev", "BrandRep", "MgmtTrans"]
 
-op_leverage = st.sidebar.radio("Operational Leverage?", ["Y", "N"])
-brand_reposition = st.sidebar.radio("Brand Repositioning Opportunity?", ["Y", "N"])
-mgmt_transition = st.sidebar.radio("Management Transition?", ["Y", "N"])
+    if uploaded_bulk:
+        df_bulk = pd.read_csv(uploaded_bulk)
 
-# Calculated Metrics
-aha = projected_irr - (8 + illiquidity_premium)  # Assuming 8% composite benchmark IRR
-bas = aha / volatility if volatility != 0 else 0
+        if all(col in df_bulk.columns for col in required_columns):
+            df_bulk["AHA"] = df_bulk["IRR"] - (8 + df_bulk["LSD"])
+            df_bulk["BAS"] = df_bulk["AHA"] / df_bulk["Volatility"].replace(0, 0.0001)
 
-# Bay Score Calculation
-weights = {
-    "IRR": 0.25,
-    "CoC": 0.15,
-    "AHA": 0.20,
-    "BAS": 0.20,
-    "ESG": 0.10,
-    "CoInvest": 0.05,
-    "OpLev": 0.02,
-    "BrandRep": 0.02,
-    "MgmtTrans": 0.01
-}
+            # Apply Bay Score formula
+            df_bulk["Bay Score"] = (
+                (df_bulk["IRR"] / 15 * 0.25) +
+                (df_bulk["CoC Yield"] / 8 * 0.15) +
+                (df_bulk["AHA"] / 4 * 0.20) +
+                (df_bulk["BAS"] / 0.6 * 0.20) +
+                (df_bulk["ESG"] / 5 * 0.10) +
+                (df_bulk["Sponsor Co-Invest"] / 10 * 0.05) +
+                (df_bulk["OpLev"].apply(lambda x: 1 if str(x).lower() in ["y", "yes", "true"] else 0) * 0.02) +
+                (df_bulk["BrandRep"].apply(lambda x: 1 if str(x).lower() in ["y", "yes", "true"] else 0) * 0.02) +
+                (df_bulk["MgmtTrans"].apply(lambda x: 1 if str(x).lower() in ["y", "yes", "true"] else 0) * 0.01)
+            ) * 100
 
-bay_score = (
-    (min(projected_irr / 15, 1) * weights["IRR"]) +
-    (min(coc_yield / 8, 1) * weights["CoC"]) +
-    (min(aha / 4, 1) * weights["AHA"]) +
-    (min(bas / 0.6, 1) * weights["BAS"]) +
-    (esg_score / 5 * weights["ESG"]) +
-    (min(sponsor_coinvest / 10, 1) * weights["CoInvest"]) +
-    ((1 if op_leverage == "Y" else 0) * weights["OpLev"]) +
-    ((1 if brand_reposition == "Y" else 0) * weights["BrandRep"]) +
-    ((1 if mgmt_transition == "Y" else 0) * weights["MgmtTrans"])
-) * 100
+            st.success("✅ Deals scored successfully!")
+            st.dataframe(df_bulk)
 
-# Display result
-st.metric("📊 Bay Score", f"{round(bay_score, 2)} / 100")
-st.metric("📈 AHA", f"{round(aha, 2)}%")
-st.metric("📉 BAS", f"{round(bas, 2)}")
-
-# Save and visualize deals
-if "deals" not in st.session_state:
-    st.session_state["deals"] = []
-
-if st.sidebar.button("➕ Add Deal"):
-    st.session_state["deals"].append({
-        "Deal": deal_name,
-        "Region": region,
-        "IRR": projected_irr,
-        "CoC Yield": coc_yield,
-        "AHA": aha,
-        "BAS": bas,
-        "Volatility": volatility,
-        "Bay Score": bay_score,
-        "ESG": esg_score
-    })
-
-if st.session_state["deals"]:
-    df = pd.DataFrame(st.session_state["deals"])
-    st.subheader("📋 Deal Comparison Table")
-    st.dataframe(df.sort_values("Bay Score", ascending=False), use_container_width=True)
-
-    st.subheader("📈 AHA vs Volatility")
-    fig1 = px.scatter(df, x="Volatility", y="AHA", size="Bay Score", color="Deal", hover_name="Deal")
-    st.plotly_chart(fig1, use_container_width=True)
-
-    st.subheader("📈 Bay Score vs BAS")
-    fig2 = px.scatter(df, x="BAS", y="Bay Score", size="IRR", color="Deal", hover_name="Deal")
-    st.plotly_chart(fig2, use_container_width=True)
+            fig_bulk = px.scatter(df_bulk, x="BAS", y="Bay Score", color="Deal", size="IRR", title="Bay Score vs BAS")
+            st.plotly_chart(fig_bulk, use_container_width=True)
+        else:
+            st.error("CSV must include columns: " + ", ".join(required_columns))
+    else:
+        st.info("Upload a CSV file with IRR, Volatility, CoC Yield, ESG, Co-Invest, etc.")
