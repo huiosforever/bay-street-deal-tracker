@@ -7,11 +7,7 @@ import plotly.express as px
 st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
 st.markdown("""
 <div style="display:flex; align-items:center; justify-content:space-between;">
-    <img src="https://raw.githubusercontent.com/your-repo/baylogo.png" style="height:60px;" />
-    <!-- Explainer video removed --> 
-    title="Bay Street Hospitality Explainer" frameborder="0" 
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-    allowfullscreen></iframe>
+    <img src="https://cdn.prod.website-files.com/66ec88f6d7b63833eb28d6a7/66ec8de11054852c315965b0_BAY%20STREET%20HOSPITALITY-03-p-800.png" style="height:60px;" />
 </div>
 """, unsafe_allow_html=True)
 
