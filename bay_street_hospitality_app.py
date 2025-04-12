@@ -3,6 +3,44 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 import plotly.express as px
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+
+def get_gsheet_connection():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("bay_street_credentials.json", scope)
+    client = gspread.authorize(creds)
+    sheet = client.open("Bay Street Deal Tracker").worksheet("Deals")
+    return sheet
+
+def add_deal_to_sheet(sheet, deal):
+    sheet.append_row(deal)
+
+if st.button("Save Deal"):
+    sheet = get_gsheet_connection()
+    deal = [
+        deal_name, asset_type, region, public_private,
+        projected_irr, coc_yield, volatility,
+        illiquidity_premium, esg_score, sponsor_coinvest,
+        op_leverage, brand_reposition, mgmt_transition,
+        round(bay_score, 2), round(aha, 2), round(bas, 3),
+        datetime.now().strftime("%Y-%m-%d")
+    ]
+    add_deal_to_sheet(sheet, deal)
+    st.success("✅ Deal saved to Google Sheets")    
+
+import streamlit as st
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import json
+
+def get_gsheet_connection():
+    creds_dict = st.secrets["google_sheets"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(creds_dict),
+                ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"])
+    client = gspread.authorize(creds)
+    return client.open("Bay Street Deal Tracker").worksheet("Deals")
 
 st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
 st.markdown("""
