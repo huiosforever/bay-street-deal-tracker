@@ -107,7 +107,48 @@ st.metric("📊 Bay Score", f"{round(bay_score, 2)} / 100")
 st.metric("📈 AHA", f"{round(aha, 2)}%")
 st.metric("📉 BAS", f"{round(bas, 2)}")
 
+# ------------------ Save Buttons ------------------
 
+# Initialize session state
+if "investments" not in st.session_state:
+    st.session_state["investments"] = []
+
+# Button to add investment to local session state (optional)
+if st.sidebar.button("➕ Add Investment"):
+    st.session_state["investments"].append({
+        "Investment Name": investment_name,
+        "Asset Type": asset_type,
+        "Region": region,
+        "Public/Private": public_private,
+        "IRR (%)": projected_irr,
+        "CoC Yield (%)": coc_yield,
+        "Volatility (%)": volatility,
+        "Illiquidity Premium (%)": illiquidity_premium,
+        "ESG Score": esg_score,
+        "Sponsor Co-Invest (%)": sponsor_coinvest,
+        "Op Leverage": op_leverage,
+        "Brand Reposition": brand_reposition,
+        "Mgmt Transition": mgmt_transition,
+        "Bay Score": round(bay_score, 2),
+        "AHA": round(aha, 2),
+        "BAS": round(bas, 2),
+        "Date Added": datetime.now().strftime("%Y-%m-%d"),
+        "Saved By": saved_by
+    })
+    st.success("✅ Investment added to session")
+
+# Button to save directly to Google Sheets
+if st.sidebar.button("📤 Save to Google Sheets"):
+    sheet = get_gsheet_connection()
+    row = [
+        investment_name, asset_type, region, public_private, saved_by,
+        projected_irr, coc_yield, volatility, illiquidity_premium,
+        esg_score, sponsor_coinvest, op_leverage, brand_reposition, mgmt_transition,
+        round(bay_score, 2), round(aha, 2), round(bas, 2),
+        datetime.now().strftime("%Y-%m-%d")
+    ]
+    add_investment_to_sheet(sheet, row)
+    st.success("✅ Saved to Google Sheets")
 
 
 # Part 3: Load + Edit investments + Filters
