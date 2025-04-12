@@ -168,7 +168,7 @@ import plotly.express as px
 st.subheader("📊 Optimizer: Build Portfolio from Saved Investments")
 
 
-if not st.session_state["gsheet_Investments"].empty:
+if "gsheet_Investments" in st.session_state and not st.session_state["gsheet_Investments"].empty:
    df_opt = st.session_state["gsheet_Investments"].copy()
 
 
@@ -229,7 +229,7 @@ import plotly.express as px
 st.subheader("📈 Backtest Visualizer")
 
 
-if not st.session_state["gsheet_Investments"].empty:
+if "gsheet_Investments" in st.session_state and not st.session_state["gsheet_Investments"].empty:
    df_viz = st.session_state["gsheet_Investments"].copy()
   
    st.markdown("Visualize Bay Score, AHA, and BAS from saved investments in Google Sheets.")
