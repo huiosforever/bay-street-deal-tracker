@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
 import pandas as pd
 import numpy as np
 import cvxpy as cp
@@ -30,8 +31,6 @@ if st.button("Save Deal"):
     add_deal_to_sheet(sheet, deal)
     st.success("✅ Deal saved to Google Sheets")    
 
-import streamlit as st
-import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 
@@ -42,7 +41,6 @@ def get_gsheet_connection():
     client = gspread.authorize(creds)
     return client.open("Bay Street Deal Tracker").worksheet("Deals")
 
-st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
 st.markdown("""
 <div style="display:flex; align-items:center; justify-content:space-between;">
     <img src="https://cdn.prod.website-files.com/66ec88f6d7b63833eb28d6a7/66ec8de11054852c315965b0_BAY%20STREET%20HOSPITALITY-03-p-800.png" style="height:60px;" />
