@@ -20,9 +20,15 @@ st.title("🏨 Bay Street Hospitality Investment Scoring Dashboard")
 def get_gsheet_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
-    dict(st.secrets["google_sheets"]), scope)
+        dict(st.secrets["google_sheets"]), scope
+    )
     client = gspread.authorize(creds)
-    return client.open("Bay Street Investment Tracker").worksheet("Investments")
+    
+    # Replace this line:
+    # return client.open("Bay Street Investment Tracker").worksheet("Investments")
+
+    # With this:
+    return client.open_by_key("1c2gQT1fSznq4crXa8c2C-urSs_fEj6PysvTM4zxXrwg").worksheet("Investments")
 
 # Load all rows
 def load_deals_from_gsheet(sheet):
