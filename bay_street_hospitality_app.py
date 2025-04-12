@@ -8,13 +8,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
-def get_gsheet_connection():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("bay_street_credentials.json", scope)
-    client = gspread.authorize(creds)
-    sheet = client.open("Bay Street Deal Tracker").worksheet("Deals")
-    return sheet
-
 def add_deal_to_sheet(sheet, deal):
     sheet.append_row(deal)
 
