@@ -123,7 +123,7 @@ if "gsheet_investments" not in st.session_state:
    st.session_state["gsheet_investments"] = load_investments_from_gsheet(sheet)
 
 
-if not st.session_state["gsheet_investments"].empty:
+if "gsheet_investments" in st.session_state and not st.session_state["gsheet_investments"].empty:
    df_all = st.session_state["gsheet_investments"]
   
    st.subheader("📂 All Investments from Google Sheets")
