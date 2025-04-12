@@ -293,4 +293,131 @@ else:
    st.info("📂 No investments loaded. Please load from Google Sheets first.")
 
 
+import streamlit as st
+import pandas as pd
+import numpy as np
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+import plotly.express as px
+import cvxpy as cp
+
+st.set_page_config(page_title="Bay Street Hospitality Scoring", layout="wide")
+
+# Branding
+st.markdown('''
+<div style="display:flex; align-items:center; justify-content:space-between;">
+   <img src="https://cdn.prod.website-files.com/66ec88f6d7b63833eb28d6a7/66ec8de11054852c315965b0_BAY%20STREET%20HOSPITALITY-03-p-800.png" style="height:60px;" />
+</div>
+''', unsafe_allow_html=True)
+
+st.title("🏨 Bay Street Hospitality Investment Scoring Dashboard")
+
+# GSheet connection
+def get_gsheet_connection():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        dict(st.secrets["google_sheets"]), scope
+    )
+    client = gspread.authorize(creds)
+    return client.open_by_key("1c2gQT1fSznq4crXa8c2C-urSs_fEj6PysvTM4zxXrwg").worksheet("Investments")
+
+def load_investments_from_gsheet(sheet):
+    data = sheet.get_all_records()
+    return pd.DataFrame(data)
+
+def add_investment_to_sheet(sheet, investment):
+    sheet.append_row(investment)
+
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🔍 Deal Scoring",
+    "📊 Portfolio Optimizer",
+    "🕰️ Backtest Engine",
+    "📥 Bulk Upload & Auto-Score"
+])
+
+with tab1:
+    st.sidebar.header("📝 Input New Investment")
+
+    investment_name = st.sidebar.text_input("Investment Name")
+    asset_type = st.sidebar.selectbox("Asset Type", ["Hotel", "Operator", "Developer", "Operator & Developer", "Portfolio of Hotels", "REIT", "Opportunistic", "Ticker Symbol"])
+    region = st.sidebar.selectbox("Region", ["Americas", "Europe", "APAC", "ME", "ASEAN", "Opportunistic"])
+    public_private = st.sidebar.radio("Public or Private?", ["Public", "Private"])
+    saved_by = st.sidebar.text_input("Saved By (Initials or Email)", value="")
+
+    projected_irr = st.sidebar.number_input("Projected IRR (%)", 0.0, 100.0, 12.0)
+    coc_yield = st.sidebar.number_input("Cash-on-Cash Yield (%)", 0.0, 100.0, 6.0)
+    volatility = st.sidebar.number_input("Volatility Estimate (%)", 0.0, 100.0, 10.0)
+    illiquidity_premium = st.sidebar.number_input("Illiquidity Premium (%)", 0.0, 10.0, 2.0)
+    esg_score = st.sidebar.slider("ESG Impact Score (1–5)", 1, 5, 3)
+    sponsor_coinvest = st.sidebar.number_input("Sponsor Co-Investment (%)", 0.0, 100.0, 5.0)
+
+    op_leverage = st.sidebar.radio("Operational Leverage?", ["Y", "N"])
+    brand_reposition = st.sidebar.radio("Brand Repositioning Opportunity?", ["Y", "N"])
+    mgmt_transition = st.sidebar.radio("Management Transition?", ["Y", "N"])
+
+    aha = projected_irr - (8 + illiquidity_premium)
+    bas = aha / volatility if volatility else 0
+
+    weights = {
+        "IRR": 0.25, "CoC": 0.15, "AHA": 0.20, "BAS": 0.20, "ESG": 0.10,
+        "CoInvest": 0.05, "OpLev": 0.02, "BrandRep": 0.02, "MgmtTrans": 0.01
+    }
+
+    bay_score = (
+        (min(projected_irr / 15, 1) * weights["IRR"]) +
+        (min(coc_yield / 8, 1) * weights["CoC"]) +
+        (min(aha / 4, 1) * weights["AHA"]) +
+        (min(bas / 0.6, 1) * weights["BAS"]) +
+        (esg_score / 5 * weights["ESG"]) +
+        (min(sponsor_coinvest / 10, 1) * weights["CoInvest"]) +
+        ((1 if op_leverage == "Y" else 0) * weights["OpLev"]) +
+        ((1 if brand_reposition == "Y" else 0) * weights["BrandRep"]) +
+        ((1 if mgmt_transition == "Y" else 0) * weights["MgmtTrans"])
+    ) * 100
+
+    st.metric("📊 Bay Score", f"{round(bay_score, 2)} / 100")
+    st.metric("📈 AHA", f"{round(aha, 2)}%")
+    st.metric("📉 BAS", f"{round(bas, 2)}")
+
+    if "investments" not in st.session_state:
+        st.session_state["investments"] = []
+
+    if st.sidebar.button("➕ Add Investment"):
+        st.session_state["investments"].append({
+            "Investment Name": investment_name,
+            "Asset Type": asset_type,
+            "Region": region,
+            "Public/Private": public_private,
+            "IRR (%)": projected_irr,
+            "CoC Yield (%)": coc_yield,
+            "Volatility (%)": volatility,
+            "Illiquidity Premium (%)": illiquidity_premium,
+            "ESG Score": esg_score,
+            "Sponsor Co-Invest (%)": sponsor_coinvest,
+            "Op Leverage": op_leverage,
+            "Brand Reposition": brand_reposition,
+            "Mgmt Transition": mgmt_transition,
+            "Bay Score": round(bay_score, 2),
+            "AHA": round(aha, 2),
+            "BAS": round(bas, 2),
+            "Date Added": datetime.now().strftime("%Y-%m-%d"),
+            "Saved By": saved_by
+        })
+        st.success("✅ Investment added to session")
+
+    if st.sidebar.button("📤 Save to Google Sheets"):
+        sheet = get_gsheet_connection()
+        row = [
+            investment_name, asset_type, region, public_private, saved_by,
+            projected_irr, coc_yield, volatility, illiquidity_premium,
+            esg_score, sponsor_coinvest, op_leverage, brand_reposition, mgmt_transition,
+            round(bay_score, 2), round(aha, 2), round(bas, 2),
+            datetime.now().strftime("%Y-%m-%d")
+        ]
+        add_investment_to_sheet(sheet, row)
+        st.success("✅ Saved to Google Sheets")
+
+# (Remaining logic for tab2, tab3, and tab4 should follow the same structure)
+
 
