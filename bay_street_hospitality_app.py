@@ -22,7 +22,7 @@ def get_gsheet_connection():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
     dict(st.secrets["google_sheets"]), scope)
     client = gspread.authorize(creds)
-    return client.open("Bay Street Deal Tracker").worksheet("Deals")
+    return client.open("Bay Street Investment Tracker").worksheet("Investments")
 
 # Load all rows
 def load_deals_from_gsheet(sheet):
